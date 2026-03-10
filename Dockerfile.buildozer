@@ -1,0 +1,26 @@
+FROM ghcr.io/kivy/buildozer:latest
+
+RUN apt-get update && apt-get install -y wget unzip && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/.buildozer/android/platform/android-sdk/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip -O /tmp/cmdline.zip && \
+    unzip -q /tmp/cmdline.zip -d /root/.buildozer/android/platform/android-sdk/cmdline-tools && \
+    mv /root/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools /root/.buildozer/android/platform/android-sdk/cmdline-tools/latest && \
+    rm /tmp/cmdline.zip && \
+    chmod +x /root/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager
+
+RUN yes | /root/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root=/root/.buildozer/android/platform/android-sdk || true
+
+RUN /root/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager \
+    --sdk_root=/root/.buildozer/android/platform/android-sdk \
+    "build-tools;34.0.0" "platforms;android-36" "platform-tools" "ndk;25.1.8937393" --verbose
+
+RUN mkdir -p /root/.buildozer/android/platform/android-sdk/tools/bin && \
+    ln -sfn /root/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager && \
+    cp -a /root/.buildozer/android/platform/android-ndk-r25b* /root/.buildozer/android/platform/android-ndk-r25b || true
+
+RUN chown -R 1000:1000 /home/user && \
+    echo "Set disable_coredump false" >> /etc/sudo.conf
+
+USER 1000
+WORKDIR /home/user/hostcwd
