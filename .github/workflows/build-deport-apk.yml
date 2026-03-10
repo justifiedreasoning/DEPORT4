@@ -1,0 +1,42 @@
+name: Build DEPORT APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache Buildozer SDK/NDK
+      uses: actions/cache@v4
+      with:
+        path: \~/.buildozer
+        key: buildozer-docker-v33-${{ hashFiles('buildozer.spec') }}
+        restore-keys: buildozer-docker-v33-
+
+    - name: Build custom Docker image
+      run: docker build -f Dockerfile.buildozer -t custom-buildozer .
+
+    - name: Build APK
+      run: |
+        docker run --rm \
+          --user root \
+          --env BUILDOZER_ALLOW_ROOT=1 \
+          --volume "$PWD":/home/user/hostcwd \
+          --volume "$HOME/.buildozer":/home/user/.buildozer \
+          --entrypoint /bin/sh \
+          custom-buildozer \
+          -c 'yes | buildozer --log-level=2 android debug'
+
+    - name: Fix permissions
+      run: sudo chown -R runner:runner bin/ || true
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: deport-apk
+        path: bin/*.apk
+        retention-days: 30
